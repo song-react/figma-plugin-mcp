@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { margin: 0; padding: 16px; font: 12px/1.5 Inter, sans-serif; color: var(--figma-color-text); background: var(--figma-color-bg); }
+      strong { display: block; margin-bottom: 6px; font-size: 13px; }
+      #status { color: var(--figma-color-text-secondary); }
+      .online { color: var(--figma-color-text-success) !important; }
+    </style>
+  </head>
+  <body>
+    <strong>Local Figma MCP Bridge</strong>
+    <div id="status">正在连接本地服务…</div>
+    <div id="page"></div>
+    <script>
+      let meta;
+      let sessionId;
+      let socket;
+      const status = document.querySelector('#status');
+      const page = document.querySelector('#page');
+
+      const sendHello = () => {
+        if (socket?.readyState === WebSocket.OPEN && sessionId) {
+          socket.send(JSON.stringify({ type: 'hello', sessionId, meta }));
+        }
+      };
+
+      const connect = () => {
+        socket = new WebSocket('ws://127.0.0.1:18428/plugin');
+        socket.onopen = () => {
+          status.textContent = '已连接，可由 Codex 直接读取';
+          status.className = 'online';
+          sendHello();
+        };
+        socket.onmessage = event => {
+          const message = JSON.parse(event.data);
+          if (message.type === 'request') {
+            parent.postMessage({ pluginMessage: message }, '*');
+          }
+        };
+        socket.onclose = () => {
+          status.textContent = '本地服务未连接，正在重试…';
+          status.className = '';
+          setTimeout(connect, 1000);
+        };
+      };
+
+      window.onmessage = event => {
+        const message = event.data.pluginMessage;
+        if (!message) return;
+        if (message.type === 'hello') {
+          sessionId = message.sessionId;
+          meta = message.meta;
+          page.textContent = `${meta.pageName} · 已选 ${meta.selectionCount} 个节点`;
+          sendHello();
+        } else if (message.type === 'response' && socket?.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify(message));
+        }
+      };
+
+      connect();
+    </script>
+  </body>
+</html>
