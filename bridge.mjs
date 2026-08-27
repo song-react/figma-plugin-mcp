@@ -52,7 +52,7 @@ const server = Bun.serve({
           const client = routes.get(message.requestId);
           if (client) {
             routes.delete(message.requestId);
-            send(client, message);
+            send(client.socket, { ...message, requestId: client.requestId });
           }
         }
         return;
@@ -80,7 +80,7 @@ const server = Bun.serve({
           });
         }
         const requestId = `${Date.now()}-${++sequence}`;
-        routes.set(requestId, socket);
+        routes.set(requestId, { socket, requestId: message.requestId });
         const { sessionId: _, ...args } = message.args ?? {};
         send(plugin.socket, {
           type: 'request',
@@ -96,7 +96,7 @@ const server = Bun.serve({
         if (current?.socket === socket) plugins.delete(socket.data.sessionId);
       }
       for (const [requestId, client] of routes) {
-        if (client === socket) routes.delete(requestId);
+        if (client.socket === socket) routes.delete(requestId);
       }
     },
   },

@@ -27,7 +27,7 @@
       };
 
       const connect = () => {
-        socket = new WebSocket('ws://127.0.0.1:18428/plugin');
+        socket = new WebSocket('ws://localhost:18428/plugin');
         socket.onopen = () => {
           status.textContent = '已连接，可由 Codex 直接读取';
           status.className = 'online';
